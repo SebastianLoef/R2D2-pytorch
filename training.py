@@ -1,10 +1,19 @@
+import wrappers, actor
+
+from multiprocessing import Manager, set_start_method
 import torch
 
 
-def h(x, eps):
-    return torch.sign(x)*(torch.sqrt(torch.abs(x)+1)-1) + eps*x
+def get_sequence(episode):
+    episode_len = len(episode)
+    
 
-def h_inv(x, eps):
-    return torch.sign(x)*(((torch.sqrt(1+4*eps*(torch.abs(x)+1+eps))-1)/(2*eps))**2-1)
 
+
+if __name__ == "__main__":
+    set_start_method("spawn")
+
+    with Manager() as manager:
+        ExperienceBuffer = manager.deque(maxlen=1000)
+    
 
