@@ -5,23 +5,25 @@ import numpy as np
 
 
 class Node():
-    def __init__(self, p=0, data=None, index=None):
+    def __init__(self, p=0):
         self.p = p
-        self.data = data
-        self.size = 0
         self.parent = None
         self.left = None
         self.right = None
-        self.index = None
+
+
+class Leaf(Node):
+    def __init__(self, p=0, data=None, index=None):
+        super().__init__(p)
+        self.data = data
+        self.index = index
 
 
 class SumTree():
     def __init__(self, size):
-        self.leafs = [Node(index=i) for i in range(size)]
+        self.leafs = [Leaf(index=i) for i in range(size)]
         self.crown = None
         self.max_size = size
-        self.index = 0
-        self.locked_idxs = []
 
         def fill_parents(unique_nodes):
             former_node = None
@@ -57,17 +59,6 @@ class SumTree():
         if node.parent is not None:
             self.update_branch(node.parent, delta_p)
 
-    def append(self, p, data):
-        while self.index in self.locked_idxs:
-            self.index = (self.index + 1) % self.max_size
-        self.update_leaf(self.index, p, data)
-        self.index = (self.index + 1) % self.max_size
-
-    def extend(self, sequence_batch):
-        for sequence in sequence_batch:
-            p, data = sequence
-            self.append(p, data)
-
     def _find(self, p, node, offset=0):
         if node.data is not None:
             return (node.index, node.data)
@@ -77,6 +68,20 @@ class SumTree():
             return self._find(p, node.right, node.left.p+offset)
         else:
             return self._find(p, node.left, offset)
+
+    def update_leaf(self, idx, p, data=None):
+        delta_p = p - self.leafs[idx].p
+        if data:
+            self.leafs[idx].data = data
+        self.leafs[idx].p = p
+        self.update_branch(self.leafs[idx].parent, delta_p)
+
+
+class ReplayMemory(SumTree):
+    def __init__(self, size):
+        super().__init__(size)
+        self.index = 0
+        self.locked_idxs = []
 
     def get_samples(self, sample_size):
         p_total = self.crown.p
@@ -88,13 +93,17 @@ class SumTree():
         self.locked_idxs.extend(idxs)
         return output
 
-    def update_leaf(self, idx, p, data=None):
-        delta_p = p - self.leafs[idx].p
-        if data:
-            self.leafs[idx].data = data
-        self.leafs[idx].p = p
-        self.update_branch(self.leafs[idx].parent, delta_p)
-
     def update_p(self, idx, p):
         self.update_leaf(idx, p)
         self.locked_idxs.remove(idx)
+
+    def append(self, p, data):
+        while self.index in self.locked_idxs:
+            self.index = (self.index + 1) % self.max_size
+        self.update_leaf(self.index, p, data)
+        self.index = (self.index + 1) % self.max_size
+
+    def extend(self, sequence_batch):
+        for sequence in sequence_batch:
+            p, data = sequence
+            self.append(p, data)
