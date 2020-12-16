@@ -34,17 +34,17 @@ class Actor(mp.Process):
         states, _, rewards = zip(*sequence)
         states = states[5:]
         rewards = rewards + (0,)*5
-        delta = [sum(r*self.gamma**i for i, r in
-                     enumerate(rewards[j:j+5]))
+        delta = [sum(r*self.gamma**i
+                     for i, r in enumerate(rewards[j:j+5]))
                  for j in range(self.m)]
         delta = torch.Tensor(delta)
         with torch.no_grad():
             states_v = np.array(states) / 255.0
             states_v = states_v.transpose(0, 3, 1, 2)
             states_v = torch.Tensor(states_v).to(self.device)
-            q_values = self.net(states_v)
+            q_values, _ = self.net(states_v)
             actions = q_values.max(1)[1].unsqueeze(-1)
-            q_values = self.target_net(states_v)
+            q_values, _ = self.target_net(states_v)
             q_values = q_values.gather(1, actions).squeeze(-1)
             q_values = q_values.cpu()
 
@@ -68,7 +68,7 @@ class Actor(mp.Process):
                     state_v = np.array(state) / 255.0
                     state_v = state_v.transpose(2, 0, 1)
                     state_v = torch.Tensor([state_v]).to(self.device)
-                    q_values = self.net(state_v)
+                    q_values, _ = self.net(state_v)
                     action = q_values.max(1)[1]
                 action = action.item()
                 new_state, reward, done, _ = self.env.step(action)
