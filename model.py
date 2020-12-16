@@ -13,12 +13,12 @@ class R2D2(nn.Module):
         self.lstm1 = nn.LSTM(64*7*7, 512)
         self.lstm2 = nn.LSTM(512, n_actions)
 
-    def forward(self, x):
+    def forward(self, x, h=(None,None)):
         x = self.relu(self.conv1(x))
         x = self.relu(self.conv2(x))
         x = self.relu(self.conv3(x))
         x = torch.flatten(x, 1)
         x = x.unsqueeze(0)
-        x, _ = self.lstm1(x)
-        x, _ = self.lstm2(x)
-        return x.squeeze(0)
+        x, (h1, _) = self.lstm1(x, h[0])
+        x, (h2, _) = self.lstm2(x, h[1])
+        return x.squeeze(0), (h1, h2)
