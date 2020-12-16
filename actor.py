@@ -55,6 +55,7 @@ class Actor(mp.Process):
 
     def run(self):
         transition_buffer = deque(maxlen=self.m)
+        hidden_state_buffer = deque(maxlen=self.m)
         sequence_buffer = []
         speed = deque(maxlen=5)
         while not self.exit.is_set():
@@ -62,28 +63,31 @@ class Actor(mp.Process):
             sequence_buffer.clear()
             state = self.env.reset()
             start_time = time.time()
+            hidden_state = None
             done = False
             for frame in count():
                 with torch.no_grad():
                     state_v = np.array(state) / 255.0
                     state_v = state_v.transpose(2, 0, 1)
                     state_v = torch.Tensor([state_v]).to(self.device)
-                    q_values, _ = self.net(state_v)
+                    q_values, hidden_state = self.net(state_v)
                     action = q_values.max(1)[1]
                 action = action.item()
                 new_state, reward, done, _ = self.env.step(action)
 
                 transition_buffer.append([state, action, reward])
+                hidden_state_buffer.append(hidden_state)
                 state = new_state
                 if frame % self.n == 0:
                     if frame >= self.m:
                         p, sequence = self.prepare_sequence(transition_buffer)
-                        sequence_buffer.append([p, sequence])
+                        sequence_buffer.append([p, hidden_state_buffer[0],
+                                                sequence])
                 if done:
                     break
             if len(transition_buffer) >= self.m:
                 p, sequence = self.prepare_sequence(transition_buffer)
-                sequence_buffer.append([p, sequence])
+                sequence_buffer.append([p, hidden_state_buffer[0], sequence])
                 for pair in sequence_buffer:
                     self.replaymemory.put(pair)
 
@@ -92,8 +96,8 @@ class Actor(mp.Process):
             print(f"Speed: {np.mean(speed):.2f} f/s")
 
     def stop(self):
-        print("It did work")
         self.exit.set()
+
 
 if __name__ == "__main__":
     ENV_NAME = "BreakoutNoFrameskip-v4"
@@ -104,7 +108,7 @@ if __name__ == "__main__":
     buffer = mp.Queue()
     for i in range(12):
         thread = Actor(f"Thread {i}", ENV_NAME, net,
-                    net, buffer, device=device)
+                       net, buffer, device=device)
         threads.append(thread)
 
     for thread in threads:
