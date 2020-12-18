@@ -60,7 +60,7 @@ class SumTree():
             self.update_branch(node.parent, delta_p)
 
     def _find(self, p, node, offset=0):
-        if node.data is not None:
+        if hasattr(node, 'data'):
             return (node.index, node.data)
         if node.left is None:
             return self._find(p, node.right, offset)
@@ -82,6 +82,7 @@ class ReplayMemory(SumTree):
         super().__init__(size)
         self.index = 0
         self.locked_idxs = []
+        self.size = 0
 
     def get_samples(self, sample_size):
         p_total = self.crown.p
@@ -102,7 +103,8 @@ class ReplayMemory(SumTree):
             self.index = (self.index + 1) % self.max_size
         self.update_leaf(self.index, p, data)
         self.index = (self.index + 1) % self.max_size
-
+        self.size = min(self.size + 1, self.max_size) 
+    
     def extend(self, sequence_batch):
         for sequence in sequence_batch:
             p, data = sequence
