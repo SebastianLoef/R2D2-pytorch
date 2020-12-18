@@ -1,7 +1,8 @@
 import time
+
 from itertools import count
 import torch.multiprocessing as mp
-from collections import deque
+from collections import deque, namedtuple
 import numpy as np
 
 import torch
@@ -10,6 +11,9 @@ import model
 import equations
 from wrappers import make_atari, wrap_deepmind
 
+Package = namedtuple("Package", ["h", "seq"])
+
+QItem = namedtuple("QItem", ["type", "item"])
 
 class Actor(mp.Process):
     def __init__(self, name, env_name, net, target_net,
@@ -22,7 +26,7 @@ class Actor(mp.Process):
         self.net = net.to(device)
         self.target_net = target_net.to(device)
         self.device = device
-        self.replaymemory = buffer
+        self.queue = buffer
         self.name = name
         self.m = 80
         self.n = 40
@@ -76,24 +80,28 @@ class Actor(mp.Process):
                 new_state, reward, done, _ = self.env.step(action)
 
                 transition_buffer.append([state, action, reward])
+                hidden_state = (hidden_state[0].cpu(), hidden_state[1].cpu())
                 hidden_state_buffer.append(hidden_state)
                 state = new_state
                 if frame % self.n == 0:
                     if frame >= self.m:
-                        p, sequence = self.prepare_sequence(transition_buffer)
-                        sequence_buffer.append([p, hidden_state_buffer[0],
-                                                sequence])
+                        p, prepared_seq = self.prepare_sequence(transition_buffer)
+                        package = Package(hidden_state_buffer[0], prepared_seq)
+                        sequence_buffer.append([p, package])
                 if done:
                     break
             if len(transition_buffer) >= self.m:
-                p, sequence = self.prepare_sequence(transition_buffer)
-                sequence_buffer.append([p, hidden_state_buffer[0], sequence])
-                for pair in sequence_buffer:
-                    self.replaymemory.put(pair)
+                print("Putting into queue")
+                p, prepared_seq = self.prepare_sequence(transition_buffer)
+                package = Package(hidden_state_buffer[0], prepared_seq)
+                sequence_buffer.append([p, package])
+                for sequence in sequence_buffer:
+                    self.queue.put(QItem("append", sequence))
 
             time_taken = time.time() - start_time
             speed.append(frame/time_taken)
-            print(f"Speed: {np.mean(speed):.2f} f/s")
+
+            #print(f"Speed: {np.mean(speed):.2f} f/s")
 
     def stop(self):
         self.exit.set()
