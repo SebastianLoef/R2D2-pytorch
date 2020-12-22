@@ -95,13 +95,15 @@ class Actor(mp.Process):
                 p, prepared_seq = self.prepare_sequence(transition_buffer)
                 package = Package(hidden_state_buffer[0], prepared_seq)
                 sequence_buffer.append([p, package])
-                for sequence in sequence_buffer:
-                    self.queue.put(QItem("append", sequence))
+                while sequence_buffer:
+                    item = QItem("add", sequence_buffer.pop(0))
+                    self.queue.put(item)
 
             time_taken = time.time() - start_time
             speed.append(frame/time_taken)
-
+        
             #print(f"Speed: {np.mean(speed):.2f} f/s")
+        return
 
     def stop(self):
         self.exit.set()

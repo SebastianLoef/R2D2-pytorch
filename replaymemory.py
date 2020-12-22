@@ -89,9 +89,9 @@ class ReplayMemory(SumTree):
         bins = np.linspace(0, p_total, sample_size+1)
         sampled_values = np.random.rand(sample_size)
         sampled_values = (bins[1:] - bins[:-1]) * sampled_values + bins[:-1]
-        output = [self._find(p, self.crown) for p in sampled_values]
-        idxs = [sample[0] for sample in output]
-        self.locked_idxs.extend(idxs)
+        output = zip(*[self._find(p, self.crown) for p in sampled_values])
+        output = list(output)
+        self.locked_idxs.extend(output[0])
         return output
 
     def update_p(self, idx, p):
@@ -103,8 +103,8 @@ class ReplayMemory(SumTree):
             self.index = (self.index + 1) % self.max_size
         self.update_leaf(self.index, p, data)
         self.index = (self.index + 1) % self.max_size
-        self.size = min(self.size + 1, self.max_size) 
-    
+        self.size = min(self.size + 1, self.max_size)
+
     def extend(self, sequence_batch):
         for sequence in sequence_batch:
             p, data = sequence
