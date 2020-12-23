@@ -57,7 +57,6 @@ class ReplayCommunicator(mp.Process):
 
 
 if __name__ == "__main__":
-    torch.cuda.empty_cache()
     mp.set_start_method("spawn")
     queue = mp.Queue(100)
     loader = mp.Queue()
@@ -65,6 +64,10 @@ if __name__ == "__main__":
     ENV_NAME = "BreakoutNoFrameskip-v4"
     device = torch.device("cuda:1")
     net = model.R2D2(4).to(device)
+    tgt_net = model.R2D2(4).to(device)
+    tgt_net.load_state_dict(net.state_dict())
+
+
     # Creates and starts all actors
     actors = []
     for i in range(10):
@@ -72,21 +75,32 @@ if __name__ == "__main__":
                       net, queue, device=device)
         actor.start()
         actors.append(actor)
+
     replaymemory = ReplayMemory(10000)
     repcom = ReplayCommunicator(queue, loader, replaymemory)
     repcom.start()
+
+    criterion = nn.MSELoss()
+    optimizer = optim.RMSprop(net.parameters(), lr=LEARNING_RATE, 
+                              momentum=GRAD_MOMENTUM, eps=MIN_SQ_GRAD)
+
+
+
     load_protocol = QItem("sample_batch", None)
     queue.put(load_protocol)
     queue.put(load_protocol)
     time.sleep(5)
     for step in range(100):
-        print(step)
         queue.put(load_protocol)
         time.sleep(1)
-        print(loader.qsize())
         batch = loader.get()
-        idxs, data = batch
-        ps = list(range(len(idxs)))
+        idxs, ps, package = batch
+        
+        optimizer.zero_grad()
+        loss = criterion(*action_values)
+        loss.backward()
+        optimizer.step()
+
         queue.put(QItem("update_p_values", (idxs, ps)))
         del batch
         if step % 2500 == 0:

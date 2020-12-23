@@ -61,7 +61,7 @@ class SumTree():
 
     def _find(self, p, node, offset=0):
         if hasattr(node, 'data'):
-            return (node.index, node.data)
+            return (node.index, *node.data)
         if node.left is None:
             return self._find(p, node.right, offset)
         if p >= node.left.p+offset:
