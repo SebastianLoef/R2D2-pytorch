@@ -9,6 +9,7 @@ import torch
 
 import model
 import equations
+from utils import net_update_check, get_latest_nets
 from wrappers import make_atari, wrap_deepmind
 
 Package = namedtuple("Package", ["h", "seq"])
@@ -58,6 +59,7 @@ class Actor(mp.Process):
         return p, sequence
 
     def run(self):
+        net_iter_id = 0
         transition_buffer = deque(maxlen=self.m)
         hidden_state_buffer = deque(maxlen=self.m)
         sequence_buffer = []
@@ -69,6 +71,10 @@ class Actor(mp.Process):
             start_time = time.time()
             hidden_state = None
             done = False
+            if net_update_check(net_iter_id):
+                net_name, tgt_net_name = get_latest_nets()
+                self.net.load_state_dict(torch.load(net_name))
+                self.target_net.load_state_dict(torch.load(tgt_net_name))
             for frame in count():
                 with torch.no_grad():
                     state_v = np.array(state) / 255.0

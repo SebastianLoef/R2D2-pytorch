@@ -1,6 +1,7 @@
 from actor import Actor
 from replaymemory import ReplayMemory
 import model
+from utils import save_network, update_actors
 
 from collections import namedtuple
 import time
@@ -66,6 +67,8 @@ if __name__ == "__main__":
     net = model.R2D2(4).to(device)
     tgt_net = model.R2D2(4).to(device)
     tgt_net.load_state_dict(net.state_dict())
+    save_network(net, 'net_0_.pt')
+    save_network(tgt_net, 'tgt_net_0_.pt')
 
 
     # Creates and starts all actors
@@ -104,8 +107,7 @@ if __name__ == "__main__":
         queue.put(QItem("update_p_values", (idxs, ps)))
         del batch
         if step % 2500 == 0:
-            # update actors
-            pass
+            update_actors(net, tgt_net)
 
     # Stops all actors
     repcom.stop()
