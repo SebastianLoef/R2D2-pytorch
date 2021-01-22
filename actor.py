@@ -71,7 +71,7 @@ class Actor(mp.Process):
             start_time = time.time()
             hidden_state = None
             done = False
-            if net_update_check(net_iter_id):
+            if not net_update_check(net_iter_id):
                 net_name, tgt_net_name = get_latest_nets()
                 self.net.load_state_dict(torch.load(net_name))
                 self.target_net.load_state_dict(torch.load(tgt_net_name))

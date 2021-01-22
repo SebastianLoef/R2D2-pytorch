@@ -83,9 +83,9 @@ if __name__ == "__main__":
     repcom = ReplayCommunicator(queue, loader, replaymemory)
     repcom.start()
 
-    criterion = nn.MSELoss()
-    optimizer = optim.RMSprop(net.parameters(), lr=LEARNING_RATE, 
-                              momentum=GRAD_MOMENTUM, eps=MIN_SQ_GRAD)
+    #criterion = nn.MSELoss()
+    #optimizer = optim.RMSprop(net.parameters(), lr=LEARNING_RATE, 
+    #                          momentum=GRAD_MOMENTUM, eps=MIN_SQ_GRAD)
 
 
 
@@ -97,12 +97,13 @@ if __name__ == "__main__":
         queue.put(load_protocol)
         time.sleep(1)
         batch = loader.get()
-        idxs, ps, package = batch
+        idxs, ps, package, frames = batch
+        print(ps)
         
-        optimizer.zero_grad()
-        loss = criterion(*action_values)
-        loss.backward()
-        optimizer.step()
+        #optimizer.zero_grad()
+        #loss = criterion(*action_values)
+        #loss.backward()
+        #optimizer.step()
 
         queue.put(QItem("update_p_values", (idxs, ps)))
         del batch

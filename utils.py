@@ -8,15 +8,15 @@ PATH = './net_states/'
 
 def get_latest_nets():
     files = list_nets()
-    if 'tgt_net' == files[0]:
+    if 'tgt_net' in files[0]:
         tgt_net = files[0]
         net = files[1]
-    elif 'tgt_net' == files[1]:
+    elif 'tgt_net' in files[1]:
         tgt_net = files[1]
         net = files[0]
     else:
         pass
-    return net, tgt_net
+    return PATH+net, PATH+tgt_net
 
 
 def list_nets():
@@ -34,6 +34,8 @@ def get_net_iter():
 
 
 def save_network(net, name):
+    if not os.path.isdir(PATH):
+        os.mkdir(PATH)
     torch.save(net.cpu().state_dict(), PATH + name)
 
 
@@ -44,7 +46,7 @@ def update_actors(net, tgt_net):
         new_net_name = 'net_' + str(iteration) + '_.pt'
         new_tgt_net_name = 'tgt_net_' + str(iteration) + '_.pt'
         for file in files:
-            os.remove(file)
+            os.remove(PATH + file)
         save_network(net, new_net_name)
         save_network(tgt_net, new_tgt_net_name)
 
